@@ -33,7 +33,19 @@ REV_VIDEO ='\x16' # Reverse Video
 # Used for looking up card descriptions.
 dummy_deck = FluxxDeck()
 
-YES_NO_RESPONSE = '(yes|true|no|false|0|1)'
+# YES_NO_RESPONSE = '(yes|true|no|false|0|1)'
+
+def format_message(message):
+    for msg in message.strip().splitlines():
+        if "%S" in msg:
+            msg = msg.replace("%S", "")
+        if msg == '': msg = '   '
+        else:
+            msg = msg.strip()
+        yield (message
+               .replace('%B', BOLD)
+               .replace('%U', UNDERLINE)
+               .replace('%V', REV_VIDEO))
 
 class FluxxIRCGame(FluxxGame):
     def post_deal_hook(self):
@@ -138,20 +150,11 @@ class Fluxx(BasePlugin):
     def pubout(self, msg):
         self.privout(self.channel, msg)
 
-    def privout(self, user, message):
-        for msg in message.strip().splitlines():
-            if "%S" in msg:
-                msg = msg.replace("%S", "")
-                if msg == '': msg = '   '
-            else:
-                msg = msg.strip()
-            self.bot.privout(user, msg
-                            .replace('%B', BOLD)
-                            .replace('%U', UNDERLINE)
-                            .replace('%V', REV_VIDEO))
-
     def noteout(self, user, msg):
-        self.bot.noteout(user, msg)
+        for line in self.format_message(msg):
+            self.bot.noteout(user, line)
+
+    privout = noteout # XXX: fix
 
     def activate(self, channel=None):
         self.channel = channel or '#'+self.options['channel']
@@ -206,7 +209,6 @@ class Fluxx(BasePlugin):
     def bot_disconnect(self):
         pass
 
-
     # Event handlers for incoming messages
     def msg_channel(self, channel, user, message):
         self.processmessage(channel, user, message)
@@ -221,7 +223,7 @@ class Fluxx(BasePlugin):
         log.logger.info("Received message from %s in %s: %s" % (user, channel, message))
 
         messageR = message
-        
+
         if message.startswith(self.bot.nickname):
             messageR = message[len(self.bot.nickname):].strip()
             if len(message) and message[0] in ":,":
@@ -279,25 +281,20 @@ class Fluxx(BasePlugin):
         if check: return False
 
     def help(self, channel, user, params):
-        helpText = {
+        help_text = {
             'commands': """
-            My commands are: cardinfo, draw, play, currentgoal,
-                             listrules, listhand, listkeepers, queue,
-                             help, search, startgame, endgame
-            %S
+            My commands are: %CommandList
             Say %B!help %UCOMMAND%U%B for help with each command.
             """,
             
             'startgame': """
             Syntax:    %B!startgame
             Start a game in this channel.
-            Aliases:   !start, !s
             """,
 
             'endgame': """
             Syntax:    %B!endgame
             End the current game.
-            Aliases:   !end, !e
             """,
             
             'cardinfo': """
@@ -308,7 +305,6 @@ class Fluxx(BasePlugin):
             it is in play by using !listhand, !listkeepers,
             !listrules or !currentgoal, or use !search to find
             a card.
-            Aliases:   !info, !i
             """,
             
             'draw': """
@@ -317,32 +313,27 @@ class Fluxx(BasePlugin):
             
             Syntax:    %B!draw %Unumcards%U%B
             Draw a number of cards from the draw pile.
-            Aliases:   !d
             """,
             
             'play': """
             Syntax:    %B!play %Ucard%U%B
             Play card 'card'. Card can either be card number in
             your hand or an internal name like 'K_LO' for 'Love'.
-            Aliases:   !p
             """,
             
             'currentgoal': """
             Syntax:    %B!currentgoal%B
             Say the current goal.
-            Aliases:   !goal, !g
             """,
             
             'listrules': """
             Syntax:    %B!listrules%B
             List the current rules.
-            Aliases:   !rules, !r
             """,
             
             'listhand': """
             Syntax:    %B!listhand%B
             List your current hand.
-            Aliases:   !hand, !h
             """,
             
             'listkeepers': """
@@ -350,40 +341,49 @@ class Fluxx(BasePlugin):
             List your current keeper pile.
             Syntax:    %B!listkeepers %Uusername%U%B
             List the keepers of 'username'.
-            Aliases:   !keepers, !k
             """,
             
             'join': """
             Syntax:    %B!join%B
             Join the game.
-            Aliases:   !j
             """,
             
             'help': """
             Syntax:    %B!help%B
             ...
-            Aliases:   !?
             """,
             
             'search': """
             Syntax:    %B!search %Uparameters%U%B
             Search for a specific card.
-            Aliases:   !find
-            """}
+            """,
+
+            'quit': """
+            Syntax:    %B!quit
+            Quit the current game.
+            """,
+        }
+
         if len(params) == 0:
             command = ''
         else:
             command = params[0].strip().lower()
+
         if len(command) > 0 and command[0] == "!":
-            command = command[1:]
-        command = command.strip()
-        if command in command_aliases:
-            command = command_aliases[command]
-        if command not in helpText:
-            command = 'commands'
+            command = command[1:].strip()
+
         if channel == self.bot.nickname:
             channel = user
-        self.privout(channel, helpText[command])
+
+        command = command_aliases.get(command, command)
+
+        if command in help_text:
+            self.privout(channel, help_text[command].replace("%CommandList",
+                                  pretty_print_list(command_handlers.keys())))
+            aliases = reverse_aliases[command]
+            self.privout(channel, "Aliases: " + pretty_print_list('!%s' % (a,) for a in aliases))
+        else:
+            self.privout(channel, "There is no command called !%s" % (command,))
 
     def _invalidCommandPrefix(noPrivate=False, needGameStarted=False,
                               needGameNotStarted=False, needUserInGame=False,
@@ -718,6 +718,7 @@ command_handlers = {
     'search':         Fluxx.search,
     'debug':          Fluxx.debug,
     'status':         Fluxx.status,
+    'quit':           Fluxx.quit,
 }
             
 command_aliases = {
@@ -746,3 +747,7 @@ command_aliases = {
     'q':        'quit',
     'find':     'search',
 }
+
+reverse_aliases = {}
+for alias, command in command_aliases.iteritems():
+    reverse_aliases.setdefault(command, []).append(alias)
