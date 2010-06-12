@@ -148,10 +148,11 @@ class Fluxx(BasePlugin):
         self.user_handlers = {}
 
     def pubout(self, msg):
-        self.privout(self.channel, msg)
+        for line in format_message(msg):
+            self.bot.privout(self.channel, line)
 
     def noteout(self, user, msg):
-        for line in self.format_message(msg):
+        for line in format_message(msg):
             self.bot.noteout(user, line)
 
     privout = noteout # XXX: fix
