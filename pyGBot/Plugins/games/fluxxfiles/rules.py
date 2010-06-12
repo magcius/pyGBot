@@ -43,8 +43,8 @@ table.
         """
         self.draw_amount = 1
         self.play_amount = 1
-        self.hand_limit = -1
-        self.keeper_limit = -1
+        self.hand_limit = -2
+        self.keeper_limit = -2
 
 class DrawRuleCard(RuleCard):
     def __init__(self, amount):
@@ -115,7 +115,7 @@ you end your turn.
         
     def apply_rules(self, rules):
         # Discard the current hand limit rule card.
-        cards = [c for c in rules.cards if c.hand_limit > -1]
+        cards = [c for c in rules.cards if c.hand_limit >= 0]
         rules.discard(cards)
             
 class KeeperLimitRuleCard(RuleCard):
@@ -133,7 +133,7 @@ you discard all but %d at the end of your turn.
         
     def apply_rules(self, rules):
         # Discard the current keeper limit rule card.
-        cards = [c for c in rules.cards if c.keeper_limit > -1]
+        cards = [c for c in rules.cards if c.keeper_limit >= 0]
         rules.discard(cards)
 
 class NoHandBonusRuleCard(RuleCard):
