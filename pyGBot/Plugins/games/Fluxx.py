@@ -42,7 +42,7 @@ def format_message(message):
         if msg == '': msg = '   '
         else:
             msg = msg.strip()
-        yield (message
+        yield (msg
                .replace('%B', BOLD)
                .replace('%U', UNDERLINE)
                .replace('%V', REV_VIDEO))
