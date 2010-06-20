@@ -1,0 +1,28 @@
+
+Networks:
+  default:
+    Host: irc.quakenet.org
+    Port: 6667
+    Nickname: pyGBotNG
+    Realname: pyGBotNG
+    Username: pyGBotNG
+
+    Users:
+      administrator:
+        Hash: 
+        Salt: 
+        Role: 100
+
+    PrefixChar: !
+
+    Channels:
+      '#fluxx':
+        Autojoin: yes
+
+        Plugins:
+          seen:
+          commands:
+          calculate:
+          probability.decide:
+          probability.dndstats:
+          probability.roll:
