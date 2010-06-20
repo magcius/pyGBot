@@ -2,3 +2,7 @@
 *.sqlite
 *.log
 *.ini
+*~
+#*#
+*.yaml
+dropin.cache
